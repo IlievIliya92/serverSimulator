@@ -1,0 +1,23 @@
+Write a C program to simulate a server with two client observers
+
+Expectation is to have one process running on Linux as a producer and two processes working as consumers.
+
+You can use any type of IPC communication mechanism as long as you fit in the time frame.
+
+Expected output:
+
+
+| Server Es                      | Client 1                    | Client 2
+|“Unit 1” produced               | N/A                         | N/A
+|                                | Client 1 started            | N/A
+| Client 1 connected             |                             |
+| “Unit 2” produced              |Server Es produced “Unit 2”  | N/A
+|                                |                             | Client 2 started
+| Client 2 connected             |                             |
+| “Unit 3” produced              |                             |
+|                                | Server Es produced “Unit 3” | Server Es produced “Unit 3”
+| Client 1 message receive Ack   |                             |
+| Client 2 message receive Ack   |                             |
+
+
+Bonus points: To implement a library that can be linked against both clients in order to handle the Inter Process Communication
