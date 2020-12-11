@@ -1,2 +1,4 @@
 server/Debug
 server/Release
+client/Debug
+client/Release
