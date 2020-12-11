@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "server.h"
+
 /******************************** LOCAL DEFINES *******************************/
 typedef enum args {
     SOCK_FILE = 0,
@@ -58,6 +60,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    server_start(args.server_params[SOCK_FILE]);
 
     return 0;
 }
