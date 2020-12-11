@@ -2,7 +2,7 @@
 #include <argp.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <signal.h>
 
 #include "server.h"
 
@@ -47,6 +47,14 @@ error_t parse_option( int key, char *arg, struct argp_state *state )
     return 0;
 }
 
+static void sig_handler(int sig)
+{
+    fprintf(stdout, "[%s] Stopping the server\n", __func__);
+
+    server_stop();
+
+    return;
+}
 
 static struct argp argp = {options, parse_option};
 /********************************** MAIN ************************************/
@@ -61,6 +69,7 @@ int main(int argc, char *argv[])
     }
 
     server_start(args.server_params[SOCK_FILE]);
+    signal(SIGINT, sig_handler);
 
     return 0;
 }
