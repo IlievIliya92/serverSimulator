@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 2.8.9)
+set(CMAKE_BUILD_TYPE Debug)
+project(server)
+include_directories("src")
+file(GLOB_RECURSE SOURCES "src/*.c")
+add_executable(server ${SOURCES})
+target_link_libraries (server pthread)
