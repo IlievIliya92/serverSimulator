@@ -6,19 +6,22 @@ extern "C" {
 #endif
 
 /******************************** INCLUDE FILES *******************************/
+#include "util/queue.h"
 
 /*********************************** DEFINES **********************************/
 typedef enum {
     Idle_State,
-    Start_State,
+    Send_State,
+    Ack_State,
     last_State
 } fsmState_t;
 
-typedef void (*voidVoidPtr_t)(fsmState_t *, char *buff);
+typedef void (*voidVoidPtr_t)(fsmState_t *, char *, mt_queue_t *q);
 
 typedef struct {
-   voidVoidPtr_t run;
-   fsmState_t  state;
+    voidVoidPtr_t run;
+    mt_queue_t *q;
+    fsmState_t state;
 } fsm_t;
 
 /************************** INTERFACE DATA DEFINITIONS ************************/

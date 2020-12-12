@@ -19,13 +19,6 @@ void log_Setlevel(int level)
     return;
 }
 
-void log_info(char *msg)
-{
-    fprintf(stdout, "%s\n", msg);
-
-    return;
-}
-
 void log_err(char *msg)
 {
     fprintf(stderr, "%s\n", msg);
