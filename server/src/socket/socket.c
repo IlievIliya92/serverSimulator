@@ -8,7 +8,10 @@
 #include <sys/socket.h>
 
 #include "socket.h"
+
+#include "util/log.h"
 #include "util/plf.h"
+
 
 /******************************** LOCAL DEFINES *******************************/
 #define SERVER_SOCK_FILE_MODE  0777
@@ -40,7 +43,7 @@ void socket_serverStart(const char *socket_file, socket_new_t cb, void *arg)
 
     if ((listenfd = socket(PF_UNIX, SOCK_STREAM, 0)) < 0)
     {
-        fprintf(stderr, "Failed to create the server socket!\n");
+        log_err("Failed to create the server socket!\n");
         return;
     }
     memset(&serv_addr, '0', sizeof(serv_addr));
@@ -51,19 +54,19 @@ void socket_serverStart(const char *socket_file, socket_new_t cb, void *arg)
 
     if (bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) != 0)
     {
-        fprintf(stderr, "bind failed\n");
+        log_err("bind failed\n");
         return;
     }
 
     if (listen(listenfd, 10) != 0)
     {
-        fprintf(stderr, "listen failed\n");
+        log_err("listen failed\n");
         return;
     }
 
     if ((chmod(socket_file, mode)) != 0)
     {
-        fprintf(stderr, "Failed to change the mode of the socket!\n");
+        log_err("Failed to change the mode of the socket!\n");
         return;
     }
 
@@ -79,7 +82,7 @@ void socket_serverStart(const char *socket_file, socket_new_t cb, void *arg)
 
             if (setsockopt(connfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
             {
-                fprintf(stderr, "setsockopt1 failed\n");
+                log_err("setsockopt1 failed\n");
             }
 
             cb(connfd, arg);
