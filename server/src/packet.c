@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "protocol.h"
 #include "packet.h"
 /******************************** LOCAL DEFINES *******************************/
 
@@ -15,13 +16,17 @@
 msg_t *packet_parse(char *buff)
 {
     msg_t *newMsg = (msg_t *)buff;
-
-    fprintf(stdout, "COOKIE: %c\n", newMsg->header.cookie);
-    fprintf(stdout, "COMM: %d\n", newMsg->header.command);
-    fprintf(stdout, "LEN: %d\n", newMsg->header.payloadLen);
-    fprintf(stdout, "PL: %s\n", newMsg->payload);
-
     return newMsg;
 }
 
+msg_t *packet_create(char *buff, int cmd, int data)
+{
+    msg_t *newMsg = (msg_t *)buff;
 
+    newMsg->header.cookie = COOKIE;
+    newMsg->header.command = cmd;
+
+    newMsg->header.payloadLen = sprintf(newMsg->payload, "Server Es produced \"Unit %d\"", data);
+
+    return newMsg;
+}

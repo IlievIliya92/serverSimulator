@@ -15,6 +15,7 @@ extern "C" {
 
 /************************** INTERFACE FUNCTIONS DEFINITIONS ************************/
 msg_t *packet_parse(char *buff);
+msg_t *packet_create(char *buff, int cmd, int data);
 
 /** @} */
 
