@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "protocol.h"
 #include "socket/socket.h"
 /******************************** LOCAL DEFINES *******************************/
 typedef enum args {
@@ -73,19 +74,28 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-
-    const char *testTxBuffer = args.client_params[TEST_CONTENT];
-
     int sendSock = socket_unixTx(args.client_params[SOCK_FILE], 5);
     if (sendSock < 0)
     {
         return -1;
     }
 
+    const char *payload = args.client_params[TEST_CONTENT];
+
+    msg_t *newMsg;
+    newMsg = (msg_t *)malloc(sizeof(msg_t));
+
+    memset(newMsg, 0, sizeof(msg_t));
+
+    newMsg->header.cookie = '*';
+    newMsg->header.command = START_EXCHG;
+    newMsg->header.payloadLen = strlen(payload);
+    memcpy(newMsg->payload, payload, newMsg->header.payloadLen);
+
     for(;;)
     {
         fprintf(stdout, "Sending new test message to the server\n");
-        write(sendSock, testTxBuffer, strlen(testTxBuffer));
+        write(sendSock, (char *)newMsg, (sizeof(char) + sizeof(int)*2 + newMsg->header.payloadLen));
         sleep(1);
     }
 
