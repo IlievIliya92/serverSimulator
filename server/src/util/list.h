@@ -21,6 +21,7 @@ typedef struct Node {
 /************************* INTERFACE FUNCTION PROTOTYPES **********************/
 int list_push(Node_t **, void *, int );
 int list_append(Node_t **, void *, int);
+Node_t *list_New(void);
 
 #ifdef __cplusplus
 }

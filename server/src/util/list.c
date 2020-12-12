@@ -2,8 +2,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <pthread.h>
 
 #include "list.h"
+
+#include "log.h"
 /******************************** LOCAL DEFINES *******************************/
 
 /******************************* LOCAL TYPEDEFS ******************************/
@@ -17,7 +20,7 @@ static Node_t *list_newNode(void)
     newNode = (Node_t *)malloc(sizeof(Node_t));
     if (newNode == NULL)
     {
-        fprintf(stderr, "[%s] New node memory allocation failed!\n", __func__);
+        log_err("New node memory allocation failed!\n");
         return NULL;
     }
     newNode->data = NULL;
@@ -75,3 +78,13 @@ int list_push(Node_t **headref, void *data, int dataLen)
     return 0;
 }
 
+Node_t * list_New(void)
+{
+  Node_t *ll = NULL;
+
+  ll = malloc(sizeof(Node_t));
+  ll->next = NULL;
+  ll->data = NULL;
+
+  return ll;
+}
