@@ -19,7 +19,7 @@
 
 /********************************* LOCAL DATA *********************************/
 
-static volatile bool_t AbortServer;
+static volatile bool_t stopServer;
 
 /******************************* INTERFACE DATA *******************************/
 
@@ -30,7 +30,7 @@ static volatile bool_t AbortServer;
 /***************************** INTERFACE FUNCTIONS ****************************/
 void socket_serverStop(void)
 {
-    AbortServer = TRUE;
+    stopServer = TRUE;
 }
 
 void socket_serverStart(const char *socket_file, socket_new_t cb, void *arg)
@@ -70,7 +70,7 @@ void socket_serverStart(const char *socket_file, socket_new_t cb, void *arg)
         return;
     }
 
-    while(!AbortServer)
+    while(!stopServer)
     {
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
 

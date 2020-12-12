@@ -30,11 +30,14 @@ enum {
     START_EXCHG = 0,
     ACK,
     GET_REQUEST,
+    ERR,
+    INVALID,
 };
 
 /************************** INTERFACE DATA DEFINITIONS ************************/
 typedef struct msgHeader_t {
     char cookie;
+    int clientId;
     int command;
     int payloadLen;
 } __attribute__((packed, aligned(1))) msgHeader_t;

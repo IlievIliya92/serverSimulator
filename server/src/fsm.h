@@ -13,13 +13,17 @@ typedef enum {
     Idle_State,
     Send_State,
     Ack_State,
+    Err_State,
     last_State
 } fsmState_t;
 
-typedef void (*voidVoidPtr_t)(fsmState_t *, char *, mt_queue_t *q);
+typedef void (*voidConn_t)(fsmState_t *,
+                           char *,
+                           mt_queue_t *q,
+                           int);
 
 typedef struct {
-    voidVoidPtr_t run;
+    voidConn_t run;
     mt_queue_t *q;
     fsmState_t state;
 } fsm_t;

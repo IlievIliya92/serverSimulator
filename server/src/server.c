@@ -1,5 +1,6 @@
 /******************************** INCLUDE FILES *******************************/
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -7,6 +8,8 @@
 #include "fsm.h"
 #include "protocol.h"
 
+
+#include "packet.h"
 #include "socket/socket.h"
 
 #include "util/plf.h"
@@ -16,45 +19,59 @@
 
 /******************************** LOCAL DEFINES *******************************/
 #define RX_BUFF_SIZE (DATA_SIZE(msgHeader_t) + PL_SIZE)
-#define TX_BUFF_SIZE  RX_BUFF_SIZE
 
 /******************************* LOCAL TYPEDEFS ******************************/
 typedef struct conn_t {
+    bool_t slotActive;
     int connfd;
     fsm_t *fsm;
     pthread_t threadId;
     char rxBuffer[RX_BUFF_SIZE];
-    char txBuffer[TX_BUFF_SIZE];
 } conn_t;
 
 typedef struct server_t {
     int connections;
-    Node_t *conns;
+    int conSlots;
+    pthread_t producerId;
+
+    /* Connection Slots */
+    conn_t **conns;
     pthread_mutex_t data_lock;
 } server_t;
 
 /********************************* LOCAL DATA *********************************/
-void *connectionHandler(void *arg)
+static volatile bool_t stopConnection;
+
+/******************************* LOCAL FUNCTIONS ******************************/
+static void closeConnection(conn_t *conn)
 {
-    server_t *server = NULL;
+    close(conn->connfd);
+    mt_queueDelete(conn->fsm->q);
+    free(conn->fsm);
+    conn->slotActive = FALSE;
 
-    server = (server_t *)arg;
-    pthread_mutex_lock(&server->data_lock);
-    conn_t conn = *((conn_t *)server->conns->data);
-    pthread_mutex_unlock(&server->data_lock);
+    return;
+}
 
-    fprintf(stdout, "%d\n", conn.connfd);
-    for (;;)
+static void *connectionHandler(void *arg)
+{
+    conn_t *conn = (conn_t *)arg;
+
+    while(!stopConnection)
     {
-        memset(conn.rxBuffer, 0x0, RX_BUFF_SIZE);
-        if(read(conn.connfd, conn.rxBuffer, RX_BUFF_SIZE) > 0)
+        memset(conn->rxBuffer, 0x0, RX_BUFF_SIZE);
+        if(packet_rcv(conn->connfd, conn->rxBuffer, RX_BUFF_SIZE) > 0)
         {
-            conn.fsm->run(&conn.fsm->state, conn.rxBuffer, conn.fsm->q);
+            conn->fsm->run(&conn->fsm->state,
+                           conn->rxBuffer,
+                           conn->fsm->q,
+                           conn->connfd);
         }
         else
         {
-            log_err("Connection closed\n");
-            server->connections--;
+            /*TODO: delete connection */
+            closeConnection(conn);
+            fprintf(stderr, "Connection closed\n");
             break;
         }
     }
@@ -62,79 +79,108 @@ void *connectionHandler(void *arg)
     return NULL;
 }
 
-/******************************* LOCAL FUNCTIONS ******************************/
+
 static void newConnection(int connfd, void *arg)
 {
     server_t *server = NULL;
-    conn_t newConn;
+    int  i = 0;
 
     server = (server_t *)arg;
 
-    newConn.connfd = connfd;
-    newConn.fsm = getFsm();
+    //pthread_mutex_lock(&server->data_lock);
+    for (i = 0; i < server->conSlots; i++)
+    {
+        if (server->conns[i]->slotActive == FALSE)
+        {
+            server->conns[i]->connfd = connfd;
+            server->conns[i]->fsm = getFsm();
+            server->conns[i]->slotActive = TRUE;
+            server->connections++;
+            pthread_create(&server->conns[i]->threadId,
+                           NULL, connectionHandler, server->conns[i]);
+            break;
+        }
+    }
+    //pthread_mutex_unlock(&server->data_lock);
 
-    pthread_mutex_lock(&server->data_lock);
-    server->connections++;
-    fprintf(stdout, "Clients connected %d\n", server->connections);
-    list_push(&server->conns, &newConn, DATA_SIZE(conn_t));
-    pthread_mutex_unlock(&server->data_lock);
-
-    pthread_create(&newConn.threadId, NULL, connectionHandler, server);
-
+    return;
 }
 
-static void server_init(server_t *server)
+static void server_init(server_t *server, int connectionsSlots)
 {
+    int i = 0;
     server->connections = 0;
-    server->conns = NULL;
+    server->conSlots = connectionsSlots;
+    server->conns = (conn_t **)malloc(sizeof(conn_t*));
+    for (i = 0; i < server->conSlots; i++) {
+        server->conns[i] = (conn_t *)malloc(sizeof(conn_t));
+        server->conns[i]->slotActive = FALSE;
+    }
+
     pthread_mutex_init(&server->data_lock, NULL);
 
     return;
 }
 
-static void sendData(Node_t *node, int *data)
+static void server_deinit(server_t *server)
 {
-    while(node != NULL)
-    {
-        conn_t conn = *((conn_t *)node->data);
-        printf("%d\n", conn.connfd);
-        mt_queueSend(conn.fsm->q, data);
-        node = node->next;
+    int i = 0;
+    for (i = 0; i < server->conSlots; i++) {
+        free(server->conns[i]);
     }
+    free(server->conns);
 }
 
+static void sendData(conn_t *conn, int *data)
+{
+    mt_queueSend(conn->fsm->q, data);
+    return;
+}
+
+void server_connectionsStop()
+{
+    stopConnection = TRUE;
+}
 
 static void *producerThread(void *arg)
 {
     server_t *server = (server_t *)arg;
     int data = 0;
+    int i = 0;
 
-    for(;;)
+    while(!stopConnection)
     {
+        data++;
+        fprintf(stdout, "\"Unit %d\" produced\n", data);
+
         pthread_mutex_lock(&server->data_lock);
         /* If there is somebody listening lets send him the data */
         if (0 !=  server->connections)
         {
-            sendData(server->conns, &data);
+            for (i = 0; i < server->conSlots; i++)
+            {
+                if (server->conns[i]->slotActive)
+                {
+                    mt_queueSend(server->conns[i]->fsm->q, &data);
+                }
+            }
         }
         pthread_mutex_unlock(&server->data_lock);
 
-        data++;
         sleep(1);
     }
-
+    server_deinit(server);
 
     return NULL;
 }
 
 /******************************* INTERFACE FUNCTIONS ******************************/
-int server_start(const char *sockFile)
+int server_start(const char *sockFile, int connectionSlots)
 {
     server_t server;
-    pthread_t producerId;
-    pthread_create(&producerId, NULL, producerThread, &server);
 
-    server_init(&server);
+    server_init(&server, connectionSlots);
+    pthread_create(&server.producerId, NULL, producerThread, &server);
     if (sockFile != NULL)
     {
         socket_serverStart(sockFile, newConnection, &server);
@@ -147,7 +193,11 @@ int server_start(const char *sockFile)
     return 0;
 }
 
-void server_stop(void)
+void server_stop()
 {
+    /* Stop the server from accepting new connections */
     socket_serverStop();
+
+    /* Stop the producer thread & deinit connections data */
+    server_connectionsStop();
 }

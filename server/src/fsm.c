@@ -20,8 +20,7 @@ typedef enum {
     last_Event
 } fsmEvent_t;
 
-typedef fsmState_t (*eventHandler[last_State][last_Event])(mt_queue_t *dataQueue);
-
+typedef fsmState_t (*eventHandler[last_State][last_Event])(int, msg_t *, mt_queue_t *);
 /******************************** GLOBALDATA *******************************/
 
 /********************************* LOCAL DATA *********************************/
@@ -29,55 +28,69 @@ typedef fsmState_t (*eventHandler[last_State][last_Event])(mt_queue_t *dataQueue
 /******************************* INTERFACE DATA *******************************/
 
 /************************ LOCAL FUNCTIONS PROTOTYPES***************************/
-static fsmState_t start_handler(mt_queue_t *dataQueue);
-static fsmState_t stop_handler(mt_queue_t *dataQueue);
-static fsmState_t send_handler(mt_queue_t *dataQueue);
-static fsmState_t ack_handler(mt_queue_t *dataQueue);
+static fsmState_t start_handler(int, msg_t *, mt_queue_t *);
+static fsmState_t send_handler(int, msg_t *, mt_queue_t *);
+static fsmState_t ack_handler(int, msg_t *, mt_queue_t *);
+static fsmState_t err_handler(int, msg_t *, mt_queue_t *);
 
 /******************************* LOCAL FUNCTIONS ******************************/
 static eventHandler StateMachine = {
     [Idle_State] = {
                     [start_Event] = start_handler,
-                    [invalid_Event] = NULL
+                    [invalid_Event] = err_handler,
                     },
 
     [Send_State] = {
                     [send_Event] = send_handler,
-                    [invalid_Event] = NULL
+                    [invalid_Event] = err_handler,
                     },
 
     [Ack_State] = {
                     [ack_Event] = ack_handler,
-                    [invalid_Event] = NULL
+                    [invalid_Event] = err_handler,
                    },
 };
 
-static fsmState_t start_handler(mt_queue_t *dataQueue)
+static fsmState_t start_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 {
-    log_debug("START");
+    fprintf(stdout, "Client %d connected.\n", id);
+    printf("IDLE\n");
+    packet_placeCmd(outMsg, ACK);
 
     return Send_State;
 }
 
-static fsmState_t send_handler(mt_queue_t *dataQueue)
+static fsmState_t send_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 {
     int data = 0;
-    mt_queueReceive(dataQueue, &data);
-    fprintf(stdout, "%d\n", data);
-    log_debug("SEND");
-
-    return Ack_State;
+    printf("SEND\n");
+    if (mt_queueReceive(dataQueue, &data) == 0)
+    {
+        packet_placeData(outMsg, data);
+        packet_placeCmd(outMsg, ACK);
+        return Ack_State;
+    }
+    else
+    {
+        packet_placeCmd(outMsg, ERR);
+        return Send_State;
+    }
 }
 
-static fsmState_t ack_handler(mt_queue_t *dataQueue)
+static fsmState_t ack_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 {
-    log_debug("ACK");
+    printf("ACK\n");
+    fprintf(stdout, "Client %d message receive Ack.\n", id);
+    packet_placeCmd(outMsg, ACK);
 
     return Send_State;
 }
 
-static fsmState_t stop_handler(mt_queue_t *dataQueue)
+static fsmState_t err_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 {
+    printf("ERR\n");
+    packet_placeCmd(outMsg, ERR);
+
     return Idle_State;
 }
 
@@ -107,19 +120,33 @@ static fsmEvent_t fsm_readEvent(int command)
     return event;
 }
 
-static void fsm_run(fsmState_t *eNextState, char *buff, mt_queue_t *dataQueue)
+static void fsm_run(fsmState_t *eNextState,
+                    char *rxBuff,
+                    mt_queue_t *dataQueue,
+                    int connfd)
 {
-    msg_t *newMsg = packet_parse(buff);
+    msg_t *newInMsg = packet_parse(rxBuff);
+    static int cnt = 0;
+    /* TODO: Verify the packet */
+    msg_t newOutMsg;
 
-    fsmEvent_t eNewEvent = fsm_readEvent(newMsg->header.command);
+    newOutMsg.header.cookie = COOKIE;
+    newOutMsg.header.command = INVALID;
+    newOutMsg.header.payloadLen = 0;
+    memset(newOutMsg.payload, 0x0, PL_SIZE);
 
+    fprintf(stdout, "%d\n", cnt);
+    cnt++;
+    fprintf(stdout, "%d\n", newInMsg->header.command);
+    fsmEvent_t eNewEvent = fsm_readEvent(newInMsg->header.command);
     if((*eNextState < last_State) && (eNewEvent < last_Event) && StateMachine[*eNextState][eNewEvent] != NULL)
     {
-        *eNextState = (*StateMachine[*eNextState][eNewEvent])(dataQueue);
+        *eNextState = (*StateMachine[*eNextState][eNewEvent])(newInMsg->header.clientId, &newOutMsg, dataQueue);
+         packet_send(connfd, &newOutMsg);
     }
     else
     {
-        //Invalid
+        /* Invalid */
     }
 
     return;

@@ -9,16 +9,11 @@
 
 
 /******************************** LOCAL DEFINES *******************************/
-typedef enum args {
-    VERBOSITY_LEVEL = 0,
-    SOCK_FILE,
-    ARGS
-} args_t;
-
 typedef struct serverArgs_t
 {
     int verbose;
-    const char *server_params[ARGS];
+    int slots;
+    const char *sockFile;
 } serverArgs_t;
 
 /******************************* LOCAL TYPEDEFS ******************************/
@@ -29,6 +24,7 @@ typedef struct serverArgs_t
 static struct argp_option options[] = {
     {"verbose", 'v', "VERBOSITY_LEVEL", 0, "Verbose level"},
     {"fsock", 'f', "SOCK_FILE", 0, "Socket file for the UNIX socket"},
+    {"slots", 's', "SLOTS", 0, "Server connection slots"},
     { 0 }
 };
 
@@ -40,11 +36,13 @@ error_t parse_option( int key, char *arg, struct argp_state *state )
 
     switch (key) {
         case 'v':
-            arguments->verbose= atoi(arg);
+            arguments->verbose = atoi(arg);
             break;
-
         case 'f':
-            arguments->server_params[SOCK_FILE]= arg;
+            arguments->sockFile = arg;
+            break;
+        case 's':
+            arguments->slots = atoi(arg);
             break;
 
         default:
@@ -57,17 +55,17 @@ error_t parse_option( int key, char *arg, struct argp_state *state )
 static void sig_handler(int sig)
 {
     fprintf(stdout, "[%s] Stopping the server\n", __func__);
-
     server_stop();
 
-    return;
+    exit(0);
 }
 
 static struct argp argp = {options, parse_option};
 /********************************** MAIN ************************************/
 int main(int argc, char *argv[])
 {
-     serverArgs_t args = { 0 };
+    serverArgs_t args = { 0 };
+    int slots = 0;
 
     if( argp_parse(&argp, argc, argv, 0, 0, &args) != 0 )
     {
@@ -75,11 +73,17 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if ((args.verbose) > 0)
+    if (args.verbose > 0) {
         log_Setlevel(args.verbose);
+    }
 
-    server_start(args.server_params[SOCK_FILE]);
+    if (args.slots <= 0) {
+        log_err("The connection slots can not be les than 1");
+        return -3;
+    }
+
     signal(SIGINT, sig_handler);
+    server_start(args.sockFile, args.slots);
 
     return 0;
 }

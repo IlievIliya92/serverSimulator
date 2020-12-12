@@ -14,7 +14,7 @@ extern "C" {
 /************************** INTERFACE DATA DEFINITIONS ************************/
 
 /************************* INTERFACE FUNCTION PROTOTYPES **********************/
-int server_start(const char *);
+int server_start(const char *, int);
 void server_stop(void);
 
 /** @} */
