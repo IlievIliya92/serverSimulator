@@ -20,18 +20,18 @@ static Node_t *list_newNode(void)
         fprintf(stderr, "[%s] New node memory allocation failed!\n", __func__);
         return NULL;
     }
-    newNode->data = 0;
+    newNode->data = NULL;
     newNode->next = NULL;
 
     return newNode;
 }
 
 /******************************* INTERFACE FUNCTIONS ******************************/
-int list_append(Node_t **headref, int data)
+int list_append(Node_t **headref, void *data, int dataLen)
 {
     if (*headref == NULL)
     {
-        list_push(headref, data);
+        list_push(headref, data, dataLen);
         return 0;
     }
 
@@ -39,7 +39,12 @@ int list_append(Node_t **headref, int data)
     Node_t *lastNode = NULL;
 
     newNode = list_newNode();
-    newNode->data = data;
+    int offset = 0;
+    newNode->data = malloc(dataLen);
+    for (offset = 0; offset < dataLen; offset++)
+    {
+        *((uint8_t *)(newNode->data + offset)) =  *((uint8_t *)(data + offset));
+    }
 
     lastNode = *headref;
     while(lastNode->next != NULL)
@@ -51,12 +56,18 @@ int list_append(Node_t **headref, int data)
     return 0;
 }
 
-int list_push(Node_t **headref, int data)
+int list_push(Node_t **headref, void *data, int dataLen)
 {
     Node_t *newNode = list_newNode();
     if (newNode == NULL)
         return -1;
-    newNode->data = data;
+
+    int offset = 0;
+    newNode->data = malloc(dataLen);
+    for (offset = 0; offset < dataLen; offset++)
+    {
+        *((uint8_t *)(newNode->data + offset)) =  *((uint8_t *)(data + offset));
+    }
 
     newNode->next = (*headref);
     (*headref) = newNode;
@@ -64,26 +75,3 @@ int list_push(Node_t **headref, int data)
     return 0;
 }
 
-void list_print(Node_t *headref)
-{
-    while(headref != NULL)
-    {
-        fprintf(stdout, "%d\n", headref->data);
-        headref = headref->next;
-    }
-
-    return;
-}
-
-Node_t *list_findData(Node_t *headref, int data)
-{
-    while(headref != NULL)
-    {
-        if (headref->data == data)
-            return headref;
-
-        headref = headref->next;
-    }
-
-    return NULL;
-}

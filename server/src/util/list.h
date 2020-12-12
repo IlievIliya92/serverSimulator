@@ -14,15 +14,13 @@ extern "C" {
 
 /************************** INTERFACE DATA DEFINITIONS ************************/
 typedef struct Node {
-    int data;
+    void *data;
     struct Node *next;
 } Node_t;
 
 /************************* INTERFACE FUNCTION PROTOTYPES **********************/
-int list_push(Node_t **, int );
-int list_append(Node_t **, int);
-void list_print(Node_t *);
-Node_t *list_findData(Node_t *, int );
+int list_push(Node_t **, void *, int );
+int list_append(Node_t **, void *, int);
 
 #ifdef __cplusplus
 }
