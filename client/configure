@@ -1,4 +1,7 @@
 #!/bin/bash
 
-source ./scripts/env
-source ./scripts/addtopath
+source ./scripts/envClient
+source ./scripts/addtopathClient
+
+printf "Commands imported:\n\n"
+printf "buildClient - build the client\n"
