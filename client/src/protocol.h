@@ -23,24 +23,31 @@ extern "C" {
 /******************************** INCLUDE FILES *******************************/
 
 /*********************************** DEFINES **********************************/
-#define COOKIE '*'
+#define COOKIE  '*'
+#define PL_SIZE 40
 
-typedef enum command_t {
+enum {
     START_EXCHG = 0,
     ACK,
     GET_REQUEST,
-} command_t;
+    GET_RESPONSE,
+    ERR,
+    TERM,
+    RETRY,
+    INVALID,
+};
 
 /************************** INTERFACE DATA DEFINITIONS ************************/
 typedef struct msgHeader_t {
     char cookie;
-    command_t command;
+    int clientId;
+    int command;
     int payloadLen;
 } __attribute__((packed, aligned(1))) msgHeader_t;
 
 typedef struct msg_t {
     msgHeader_t header;
-    char payload[40];
+    char payload[PL_SIZE];
 } __attribute__((packed, aligned(1))) msg_t;
 
 #ifdef __cplusplus
