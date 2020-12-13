@@ -10,13 +10,16 @@ extern "C" {
 
 /*********************************** DEFINES **********************************/
 typedef struct _fsmObj_t {
-    voidCharPtrCharPtr_t run;
+    VoidInt_t init;
+    voidCharPtrCharPtrInt_t run;
+    intVoid_t statusRun;
 } fsmObj_t;
 
 /************************** INTERFACE DATA DEFINITIONS ************************/
 
 /************************* INTERFACE FUNCTION PROTOTYPES **********************/
 fsmObj_t *fsmNew(void);
+void fsmDelete(fsmObj_t *fsm);
 
 #ifdef __cplusplus
 }

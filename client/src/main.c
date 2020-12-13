@@ -6,12 +6,22 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "client.h"
+
 #include "protocol.h"
-#include "socket/socket.h"
+#include "fsm.h"
+
+
 /******************************** LOCAL DEFINES *******************************/
+#define CONNECTION_TRIES  (4)
+
+#define RX_BUFF_SIZE     (MAX_PKT_SIZE)
+#define TX_BUFF_SIZE     (MAX_PKT_SIZE)
+
+/******************************* LOCAL TYPEDEFS ******************************/
+
 typedef enum args {
     SOCK_FILE = 0,
-    TEST_CONTENT,
     CLIENT_ID,
     ARGS
 } args_t;
@@ -22,16 +32,15 @@ typedef struct clientArgs_t
     const char *client_params[ARGS];
 } clientArgs_t;
 
-/******************************* LOCAL TYPEDEFS ******************************/
-
 /******************************** INCLUDE FILES *******************************/
 
 /********************************* LOCAL DATA *********************************/
+static volatile int STOP_CLIENT = 0;
+
 static struct argp_option options[] = {
     {"verbose", 'v', 0, 0, "Enable verbose prints"},
     {"fsock", 'f', "SOCK_FILE", 0, "Socket file for the UNIX socket"},
-    {"fsock", 'i', "CLIENT_ID", 0, "Client ID"},
-    {"test", 't', "TEST_CONTENT", 0, "Test content of the message"},
+    {"id", 'i', "CLIENT_ID", 0, "Client ID"},
     { 0 }
 };
 
@@ -48,9 +57,6 @@ error_t parse_option( int key, char *arg, struct argp_state *state )
         case 'i':
             arguments->client_params[CLIENT_ID] = arg;
             break;
-        case 't':
-            arguments->client_params[TEST_CONTENT] = arg;
-            break;
         default:
             return ARGP_ERR_UNKNOWN;
     }
@@ -60,18 +66,24 @@ error_t parse_option( int key, char *arg, struct argp_state *state )
 
 static struct argp argp = {options, parse_option};
 /********************************** MAIN ************************************/
-static volatile bool_t STOP_CLIENT = FALSE;
 
 static void sig_handler(int sig)
 {
     fprintf(stdout, "[%s] Stopping the client\n", __func__);
-    STOP_CLIENT = TRUE;
+    STOP_CLIENT = 1;
+    return;
 }
-
 
 int main(int argc, char *argv[])
 {
     clientArgs_t args = { 0 };
+
+    int clientId = -1;
+    int rcvLen = 0;
+    int txLen = 0;
+
+    char buffRx[RX_BUFF_SIZE];
+    char buffTx[TX_BUFF_SIZE];
 
     if( argp_parse(&argp, argc, argv, 0, 0, &args) != 0 )
     {
@@ -79,75 +91,68 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (args.client_params[SOCK_FILE] == NULL) {
+    if (args.client_params[SOCK_FILE] == NULL)
+    {
         fprintf(stderr, "[%s] Missing socket file path\n", __func__);
         return -1;
     }
+    const char *sockPath = args.client_params[SOCK_FILE];
 
-    int clientId = -1;
     if (args.client_params[CLIENT_ID] != NULL)
     {
         clientId = atoi(args.client_params[CLIENT_ID]);
     }
+
     if (clientId < 0)
     {
         fprintf(stderr, "[%s] Missing client ID\n", __func__);
         return -1;
     }
 
-    if (args.client_params[TEST_CONTENT] == NULL) {
-        fprintf(stderr, "[%s] Missing test content\n", __func__);
-    }
-    const char *payload = args.client_params[TEST_CONTENT];
-
-    int sendSock = socket_unixTx(args.client_params[SOCK_FILE], 5);
-    if (sendSock < 0)
-    {
+    /* Create a new client */
+    clientObj_t *client = clientNew(sockPath,
+                                    clientId,
+                                    CONNECTION_TRIES);
+    if (client == NULL)
         return -1;
-    }
 
+    /* Create a new state machine */
+    fsmObj_t *fsm = fsmNew();
+    if (fsm == NULL)
+        return -1;
 
-    msg_t *newOutMsg[4];
-    msg_t *newInMsg[4];
-
-    int i = 0;
-    for (i = 0; i < 4; i++)
+    /* Try to connect to the server  */
+    if (client->connect() < 0)
     {
-        newOutMsg[i] = (msg_t *)malloc(sizeof(msg_t));
-        newInMsg[i] = (msg_t *)malloc(sizeof(msg_t));
-
-        newOutMsg[i]->header.cookie = COOKIE;
-        newOutMsg[i]->header.payloadLen = strlen(payload);
-        newOutMsg[i]->header.clientId = clientId;
-        memcpy(newOutMsg[i]->payload, payload, newOutMsg[i]->header.payloadLen);
+        goto exit;
     }
-    newOutMsg[0]->header.command = START_EXCHG;
-    newOutMsg[1]->header.command = GET_REQUEST;
-    newOutMsg[2]->header.command = ACK;
-    newOutMsg[3]->header.command = TERM;
-
     signal(SIGINT, sig_handler);
 
+    memset(buffTx, 0x0, TX_BUFF_SIZE);
+    memset(buffRx, 0x0, RX_BUFF_SIZE);
 
-    write(sendSock, (char *)newOutMsg[0], (sizeof(msg_t)));
-    read(sendSock, (char *)newInMsg[0], (sizeof(msg_t)));
-
-    fprintf(stdout, "Client %d\n", clientId);
-    while (!STOP_CLIENT)
+    fsm->init(client->getId());
+    fprintf(stderr, "Client %d started\n", client->getId());
+    while(!STOP_CLIENT)
     {
-        for (i = 1; i < 3; i++)
+        if (fsm->statusRun())
         {
-            write(sendSock, (char *)newOutMsg[i], (sizeof(msg_t)));
-            read(sendSock, (char *)newInMsg[i], (sizeof(msg_t)));
-            if (newInMsg[i]->payload != NULL && newInMsg[i]->header.command == GET_RESPONSE)
-                fprintf(stdout, "Server Es produced “%s”\n", newInMsg[i]->payload);
-            memset(newInMsg[i], 0x0, sizeof(msg_t));
+            rcvLen = client->rcv(buffRx, RX_BUFF_SIZE);
+        }
+
+        if (rcvLen > 0 || (!fsm->statusRun()))
+        {
+            txLen = 0;
+            fsm->run(buffRx, buffTx, &txLen);
+            client->send(buffTx, txLen);
         }
     }
 
-    write(sendSock, (char *)newOutMsg[4], (sizeof(msg_t)));
-    read(sendSock, (char *)newInMsg[4], (sizeof(msg_t)));
-    close(sendSock);
+exit:
+    clientDelete(client);
+    fsmDelete(fsm);
+
+    fprintf(stderr, "Clossing client application ...\n");
 
     return 0;
 }

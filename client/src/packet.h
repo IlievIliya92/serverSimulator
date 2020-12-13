@@ -14,14 +14,12 @@ extern "C" {
 /************************** INTERFACE DATA DEFINITIONS ************************/
 
 /************************** INTERFACE FUNCTIONS DEFINITIONS ************************/
-int packet_rcv(int confd, char *rxBuffer, int rxBufferLen);
 msg_t *packet_parse(char *buff);
 
 int packet_placeCmd(msg_t *msg, int cmd);
 int packet_placeData(msg_t *msg, int data);
-
-msg_t *packet_create(char *buff);
-int packet_send(int confd, msg_t *msg);
+int packet_placeCookie(msg_t *msg, char cookie);
+int packet_placeID(msg_t *msg, int id);
 
 /** @} */
 

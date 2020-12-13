@@ -73,7 +73,6 @@ static int client_connect(void)
                 MODULE_NAME, client_ctx.sockPath);
         return -1;
     }
-
     client_ctx.connected = 1;
     return 0;
 }
@@ -82,12 +81,11 @@ static int client_send(const char *buff, size_t buffLen)
 {
     int nbytes = 0;
 
-    if (client_ctx.connected)
+    if (client_ctx.connected == 0)
     {
         fprintf(stderr, "[%s] send failed. Client not connected!\n", MODULE_NAME);
         return -1;
     }
-
     nbytes = write(client_ctx.sockFd, buff, buffLen);
 
     return nbytes;
@@ -97,12 +95,11 @@ static int client_rcv(char *buff, size_t buffLen)
 {
     int nbytes = 0;
 
-    if (client_ctx.connected)
+    if (client_ctx.connected == 0)
     {
         fprintf(stderr, "[%s] receive failed. Client not connected!\n", MODULE_NAME);
         return -1;
     }
-
     nbytes = read(client_ctx.sockFd, buff, buffLen);
 
     return nbytes;

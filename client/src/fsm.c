@@ -10,6 +10,8 @@
 /******************************** LOCAL DEFINES *******************************/
 #define MODULE_NAME "FSM"
 
+#define MSG_SLOTS   5
+
 /******************************** TYPEDEFS ************************************/
 typedef enum {
     start_Event,
@@ -21,24 +23,32 @@ typedef enum {
 
 typedef enum {
     Idle_State,
-    Send_State,
+    Rcv_State,
     Ack_State,
     Term_State,
     Err_State,
     last_State
 } fsmState_t;
 
+typedef struct _fsmCtx_t {
+    msg_t *newInMsg;
+    msg_t newOutMsg;
+    fsmState_t eNextState;
+    fsmEvent_t eNewEvent;
+    int running;
+    int clientId;
+} fsmCtx_t;
+
 typedef fsmState_t (*eventHandler[last_State][last_Event])(int, msg_t *);
-/******************************** GLOBALDATA *******************************/
 
 /********************************* FSM STATE *********************************/
-static fsmState_t eNextState;
+static fsmCtx_t fsm_ctx;
 
 /******************************* INTERFACE DATA *******************************/
 
 /************************ LOCAL FUNCTIONS PROTOTYPES***************************/
 static fsmState_t start_handler(int, msg_t *);
-static fsmState_t send_handler(int, msg_t *);
+static fsmState_t rcv_handler(int, msg_t *);
 static fsmState_t ack_handler(int, msg_t *);
 static fsmState_t err_handler(int, msg_t *);
 
@@ -49,8 +59,9 @@ static eventHandler StateMachine = {
                     [invalid_Event] = err_handler,
                     },
 
-    [Send_State] = {
-                    [send_Event] = send_handler,
+    [Rcv_State] = {
+                    [ack_Event] = ack_handler,
+                    [send_Event] = rcv_handler,
                     [invalid_Event] = err_handler,
                     },
 
@@ -63,19 +74,19 @@ static eventHandler StateMachine = {
 static fsmState_t start_handler(int id, msg_t *outMsg)
 {
     packet_placeCmd(outMsg, START_EXCHG);
-    return Send_State;
+    return Rcv_State;
 }
 
-static fsmState_t send_handler(int id, msg_t *outMsg)
+static fsmState_t rcv_handler(int id, msg_t *outMsg)
 {
-    packet_placeCmd(outMsg, GET_RESPONSE);
+    packet_placeCmd(outMsg, ACK);
     return Ack_State;
 }
 
 static fsmState_t ack_handler(int id, msg_t *outMsg)
 {
-    packet_placeCmd(outMsg, ACK);
-    return Send_State;
+    packet_placeCmd(outMsg, GET_REQUEST);
+    return Rcv_State;
 }
 
 static fsmState_t err_handler(int id, msg_t *outMsg)
@@ -94,13 +105,14 @@ static fsmEvent_t fsm_readEvent(int command)
             event = start_Event;
         break;
 
-        case GET_REQUEST:
+        case GET_RESPONSE:
             event = send_Event;
         break;
 
         case ACK:
             event = ack_Event;
         break;
+        /*TODO: Add all the events from the protocol */
 
         default:
             event = invalid_Event;
@@ -110,16 +122,54 @@ static fsmEvent_t fsm_readEvent(int command)
     return event;
 }
 
-static void fsm_run(char *rxBuff, char *txBuff)
+static void fsm_init(int clientId)
 {
-    msg_t *newInMsg = packet_parse(rxBuff);
-    msg_t newOutMsg;
+    fsm_ctx.eNextState = Idle_State;
+    fsm_ctx.eNewEvent = start_Event;
+    fsm_ctx.running = 0;
+    fsm_ctx.clientId = clientId;
 
-    fsmEvent_t eNewEvent = fsm_readEvent(newInMsg->header.command);
-    if((eNextState < last_State) && (eNewEvent < last_Event) && StateMachine[eNextState][eNewEvent] != NULL)
+    return;
+}
+
+static void fsm_run(char *rxBuff, char *txBuff, int *txLen)
+{
+    fsm_ctx.newInMsg = packet_parse(rxBuff);
+    /* TODO: Verify the packet */
+
+    packet_placeCookie(&fsm_ctx.newOutMsg, COOKIE);
+    packet_placeID(&fsm_ctx.newOutMsg, fsm_ctx.clientId);
+    fsm_ctx.newOutMsg.header.payloadLen = 0;
+
+    /*
+     * The first itteration the rxBuff is not received from the socket.
+     * This serves to trigger the FSM from the IDLE state.
+    */
+    if (fsm_ctx.running) {
+        fsm_ctx.eNewEvent = fsm_readEvent(fsm_ctx.newInMsg->header.command);
+    }
+
+    if((fsm_ctx.eNextState < last_State) && (fsm_ctx.eNewEvent < last_Event) &&
+        StateMachine[fsm_ctx.eNextState][fsm_ctx.eNewEvent] != NULL)
     {
-        eNextState = (*StateMachine[eNextState][eNewEvent])(newInMsg->header.clientId, &newOutMsg);
-         //packet_send(connfd, &newOutMsg);
+        fsm_ctx.eNextState = (*StateMachine[fsm_ctx.eNextState][fsm_ctx.eNewEvent])(
+                                                        fsm_ctx.newInMsg->header.clientId,
+                                                        &fsm_ctx.newOutMsg
+                                                        );
+
+
+        if (fsm_ctx.newInMsg->header.command == GET_RESPONSE)
+        {
+            fprintf(stdout, " Server Es produced  “%s”\n", fsm_ctx.newInMsg->payload);
+        }
+        /* move to send buffer */
+        *txLen = fsm_ctx.newOutMsg.header.payloadLen + HEADER_SIZE;
+
+        /* TODO: this is kinda slow the outmsg is already prepared it can be send. */
+        memcpy(txBuff, &fsm_ctx.newOutMsg, *txLen);
+
+        /* Indication that the fsm is triggered and not in IDLE */
+        fsm_ctx.running = 1;
     }
     else
     {
@@ -129,18 +179,34 @@ static void fsm_run(char *rxBuff, char *txBuff)
     return;
 }
 
+static int fsm_status (void)
+{
+    return fsm_ctx.running;
+}
 
 /***************************** INTERFACE FUNCTIONS ****************************/
 fsmObj_t *fsmNew(void)
 {
-    eNextState = Idle_State;
-
     fsmObj_t *fsm = (fsmObj_t *)(malloc(sizeof(fsmObj_t)));
     if (fsm == NULL)
     {
         fprintf(stderr, "[%s] Fsm creation failed.\n", MODULE_NAME);
     }
+    fsm->init = fsm_init;
     fsm->run = fsm_run;
+    fsm->statusRun = fsm_status;
 
     return fsm;
+}
+
+
+void fsmDelete(fsmObj_t *fsm)
+{
+    /* Free the memory for the fsm's methods */
+    if (fsm != NULL)
+    {
+        free(fsm);
+    }
+
+    return;
 }

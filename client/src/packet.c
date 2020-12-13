@@ -18,22 +18,26 @@ msg_t *packet_parse(char *buff)
 {
     msg_t *newMsg = (msg_t *)buff;
 
-    /*TODO: Check packet integrity */
-    return newMsg;
-}
-
-msg_t *packet_create(char *buff)
-{
-    msg_t *newMsg = (msg_t *)buff;
-
-
-
     return newMsg;
 }
 
 int packet_placeCmd(msg_t *msg, int cmd)
 {
     msg->header.command = cmd;
+
+    return 0;
+}
+
+int packet_placeCookie(msg_t *msg, char cookie)
+{
+    msg->header.cookie = cookie;
+
+    return 0;
+}
+
+int packet_placeID(msg_t *msg, int id)
+{
+    msg->header.clientId = id;
 
     return 0;
 }
