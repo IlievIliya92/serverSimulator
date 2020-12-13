@@ -55,7 +55,9 @@ static eventHandler StateMachine = {
 static fsmState_t start_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 {
     fprintf(stdout, "Client %d connected.\n", id);
-    packet_placeCmd(outMsg, START_EXCHG);
+
+    packet_placeCmd(outMsg, ACK);
+
 
     return Send_State;
 }
@@ -102,6 +104,7 @@ static fsmEvent_t fsm_readEvent(int command)
         case ACK:
             event = ack_Event;
         break;
+        /*TODO: Add all the events from the protocol */
 
         default:
             event = invalid_Event;
@@ -117,7 +120,6 @@ static void fsm_run(fsmState_t *eNextState,
                     int connfd)
 {
     msg_t *newInMsg = packet_parse(rxBuff);
-    static int cnt = 0;
     /* TODO: Verify the packet */
     msg_t newOutMsg;
 

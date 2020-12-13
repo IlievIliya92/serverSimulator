@@ -16,9 +16,9 @@ extern "C" {
  *
  *  PROTOCOL:
  *
- *  |                   HEADER              | MSG DATA |
- *  | COOKIE | COMMAND ID | PAYLOAD LEN     | DATA     |
- *  | 1 BYTE | 4 bytes    | 4 bytes         | 40 bytes |
+ *  |                      HEADER                                       | MSG DATA |
+ *  | COOKIE | CLIENT ID  |  COMMAND ID     | DATA_SIZE PAYLOAD LEN     | DATA     |
+ *  | 1 BYTE | 4 bytes    |   4 bytes       | 4 bytes                   | 40 bytes |
  */
 /******************************** INCLUDE FILES *******************************/
 
