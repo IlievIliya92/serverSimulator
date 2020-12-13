@@ -1,0 +1,3 @@
+#!/bin/bash
+
+export CLIENT_PROJECT_ROOT=$(pwd)
