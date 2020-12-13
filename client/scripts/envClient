@@ -1,0 +1,4 @@
+#!/bin/bash
+
+export CLIENT_PROJECT_ROOT=$(pwd)
+export LD_LIBRARY_PATH=${CLIENT_PROJECT_ROOT}/src/
