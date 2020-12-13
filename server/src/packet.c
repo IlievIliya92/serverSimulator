@@ -46,9 +46,10 @@ int packet_placeData(msg_t *msg, int data)
 
 int packet_send(int connfd, msg_t *msg)
 {
-    write(connfd, (char *)msg, (sizeof(msg_t)));
+    int ret = 0;
+    ret = write(connfd, (char *)msg, (sizeof(msg_t)));
 
-    return 0;
+    return ret;
 }
 
 int packet_rcv(int connfd, char *rxBuffer, int rxBufferLen)

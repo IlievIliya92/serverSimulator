@@ -69,16 +69,16 @@ static void *connectionHandler(void *arg)
         }
         else
         {
-            /*TODO: delete connection */
-            closeConnection(conn);
             fprintf(stderr, "Connection closed\n");
             break;
         }
     }
 
+    /*TODO: delete connection */
+    closeConnection(conn);
+
     return NULL;
 }
-
 
 static void newConnection(int connfd, void *arg)
 {
@@ -87,7 +87,7 @@ static void newConnection(int connfd, void *arg)
 
     server = (server_t *)arg;
 
-    //pthread_mutex_lock(&server->data_lock);
+    pthread_mutex_lock(&server->data_lock);
     for (i = 0; i < server->conSlots; i++)
     {
         if (server->conns[i]->slotActive == FALSE)
@@ -101,7 +101,7 @@ static void newConnection(int connfd, void *arg)
             break;
         }
     }
-    //pthread_mutex_unlock(&server->data_lock);
+    pthread_mutex_unlock(&server->data_lock);
 
     return;
 }
@@ -129,17 +129,6 @@ static void server_deinit(server_t *server)
         free(server->conns[i]);
     }
     free(server->conns);
-}
-
-static void sendData(conn_t *conn, int *data)
-{
-    mt_queueSend(conn->fsm->q, data);
-    return;
-}
-
-void server_connectionsStop()
-{
-    stopConnection = TRUE;
 }
 
 static void *producerThread(void *arg)
@@ -174,6 +163,11 @@ static void *producerThread(void *arg)
     return NULL;
 }
 
+static void server_connectionsStop()
+{
+    stopConnection = TRUE;
+}
+
 /******************************* INTERFACE FUNCTIONS ******************************/
 int server_start(const char *sockFile, int connectionSlots)
 {
@@ -181,6 +175,8 @@ int server_start(const char *sockFile, int connectionSlots)
 
     server_init(&server, connectionSlots);
     pthread_create(&server.producerId, NULL, producerThread, &server);
+
+    fprintf(stdout, "Server Es\n");
     if (sockFile != NULL)
     {
         socket_serverStart(sockFile, newConnection, &server);

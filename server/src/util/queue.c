@@ -82,38 +82,30 @@ int mt_queueSend(mt_queue_t *q, const void * element)
 
 int mt_queueReceive(mt_queue_t *q, void * element_out)
 {
-    int ret = 0;
-//    sem_wait(&q->more_data);
-    if(sem_trywait(&q->more_data) == 0)
-    {
-      pthread_mutex_lock(&q->data_lock);
-      if (q->head != q->tail)
-      {
-          int offset;
-          offset = q->elem_size * q->tail;
-          memcpy(element_out, &(q->data[offset]), q->elem_size);
+        sem_wait(&q->more_data);
+        pthread_mutex_lock(&q->data_lock);
+        if (q->head != q->tail)
+        {
+            int offset;
+            offset = q->elem_size * q->tail;
+            memcpy(element_out, &(q->data[offset]), q->elem_size);
 
-          q->tail += 1;
-          if (q->tail >= q->capacity)
-          {
-              q->tail = 0;
-          }
-      }
-      else
-      {
-           fprintf(stderr, "Message queue underflow, should never happen!\n");
-      }
-      pthread_mutex_unlock(&q->data_lock);
+            q->tail += 1;
+            if (q->tail >= q->capacity)
+            {
+                q->tail = 0;
+            }
+        }
+        else
+        {
+            fprintf(stderr, "Message queue underflow, should never happen!\n");
+        }
+        pthread_mutex_unlock(&q->data_lock);
 
-      // And we must give to the room mutex, now that there is room for one more message
-      sem_post(&q->more_room);
-    }
-    else
-    {
-      ret = -1;
-    }
+        // And we must give to the room mutex, now that there is room for one more message
+        sem_post(&q->more_room);
 
-    return ret;
+        return 0;
 }
 
 void mt_queueDelete(mt_queue_t *q)

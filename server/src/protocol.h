@@ -30,7 +30,10 @@ enum {
     START_EXCHG = 0,
     ACK,
     GET_REQUEST,
+    GET_RESPONSE,
     ERR,
+    TERM,
+    RETRY,
     INVALID,
 };
 

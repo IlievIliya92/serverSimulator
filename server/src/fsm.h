@@ -13,6 +13,7 @@ typedef enum {
     Idle_State,
     Send_State,
     Ack_State,
+    Term_State,
     Err_State,
     last_State
 } fsmState_t;

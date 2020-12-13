@@ -41,6 +41,7 @@ static eventHandler StateMachine = {
                     },
 
     [Send_State] = {
+                    [start_Event] = NULL,
                     [send_Event] = send_handler,
                     [invalid_Event] = err_handler,
                     },
@@ -54,8 +55,7 @@ static eventHandler StateMachine = {
 static fsmState_t start_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 {
     fprintf(stdout, "Client %d connected.\n", id);
-    printf("IDLE\n");
-    packet_placeCmd(outMsg, ACK);
+    packet_placeCmd(outMsg, START_EXCHG);
 
     return Send_State;
 }
@@ -63,23 +63,15 @@ static fsmState_t start_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 static fsmState_t send_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 {
     int data = 0;
-    printf("SEND\n");
-    if (mt_queueReceive(dataQueue, &data) == 0)
-    {
-        packet_placeData(outMsg, data);
-        packet_placeCmd(outMsg, ACK);
-        return Ack_State;
-    }
-    else
-    {
-        packet_placeCmd(outMsg, ERR);
-        return Send_State;
-    }
+    mt_queueReceive(dataQueue, &data);
+    packet_placeData(outMsg, data);
+    packet_placeCmd(outMsg, GET_RESPONSE);
+
+    return Ack_State;
 }
 
 static fsmState_t ack_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 {
-    printf("ACK\n");
     fprintf(stdout, "Client %d message receive Ack.\n", id);
     packet_placeCmd(outMsg, ACK);
 
@@ -88,7 +80,6 @@ static fsmState_t ack_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 
 static fsmState_t err_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 {
-    printf("ERR\n");
     packet_placeCmd(outMsg, ERR);
 
     return Idle_State;
@@ -132,12 +123,10 @@ static void fsm_run(fsmState_t *eNextState,
 
     newOutMsg.header.cookie = COOKIE;
     newOutMsg.header.command = INVALID;
+    newOutMsg.header.clientId = newInMsg->header.clientId;
     newOutMsg.header.payloadLen = 0;
     memset(newOutMsg.payload, 0x0, PL_SIZE);
 
-    fprintf(stdout, "%d\n", cnt);
-    cnt++;
-    fprintf(stdout, "%d\n", newInMsg->header.command);
     fsmEvent_t eNewEvent = fsm_readEvent(newInMsg->header.command);
     if((*eNextState < last_State) && (eNewEvent < last_Event) && StateMachine[*eNextState][eNewEvent] != NULL)
     {
