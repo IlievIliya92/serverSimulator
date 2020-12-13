@@ -1,0 +1,3 @@
+#!/bin/bash
+
+export SERVER_PROJECT_ROOT=$(pwd)

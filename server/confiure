@@ -1,0 +1,8 @@
+#!/bin/bash
+
+source ./scripts/envServer
+source ./scripts/addtopathServer
+
+printf "Commands imported:\n\n"
+printf "buildServer - build the server\n"
+
