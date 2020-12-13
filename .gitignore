@@ -4,3 +4,5 @@ client/Debug
 client/Release
 
 client/client
+client/src/*.o
+client/src/*.so
