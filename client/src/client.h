@@ -18,11 +18,11 @@ typedef struct _clientObj_t {
     charPtrSizeT_t rcv;
     intVoid_t getState;
     intVoid_t getId;
-} clientObj_t;
+} clientMethods_t;
 
 /********************************** INTERFACE FUNCS ***************************/
-clientObj_t *clientNew(const char *, int, int );
-void clientDelete(clientObj_t *);
+clientMethods_t *clientGet(const char *, int, int );
+void clientRelease();
 
 
 /** @} */

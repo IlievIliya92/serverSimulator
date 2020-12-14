@@ -25,6 +25,7 @@ typedef struct _clientCtx_t {
 
 /*******************************  Client State Data ***************************/
 static clientCtx_t client_ctx;
+static clientMethods_t clientMethods;
 
 /******************************* LOCAL FUNCTIONS ******************************/
 static int client_socketInit(const char *socket_path, int retries)
@@ -116,43 +117,35 @@ static int client_getId(void)
 }
 
 /********************************** PUBLIC FUNCS ***************************/
-clientObj_t *clientNew(const char *sockPath, int clientID, int clientConnTries)
+clientMethods_t *clientGet(const char *sockPath, int clientID, int clientConnTries)
 {
+    if (client_ctx.connected == 1) {
+        fprintf(stdout, "[%s] You already have a running client!\n", MODULE_NAME);
+        return NULL;
+    }
+
     client_ctx.sockFd = -1;
     client_ctx.sockPath = sockPath;
     client_ctx.clientId = clientID;
     client_ctx.connTries = clientConnTries;
     client_ctx.connected = 0;
 
-    clientObj_t *client = (clientObj_t *)(malloc(sizeof(clientObj_t)));
-    if (client == NULL)
-    {
-        fprintf(stderr, "[%s] Client creation failed\n", MODULE_NAME);
-        return NULL;
-    }
+    clientMethods.connect = client_connect;
+    clientMethods.send = client_send;
+    clientMethods.rcv = client_rcv;
+    clientMethods.getState = client_getState;
+    clientMethods.getId = client_getId;
 
-    client->connect = client_connect;
-    client->send = client_send;
-    client->rcv = client_rcv;
-    client->getState = client_getState;
-    client->getId = client_getId;
-
-    return client;
+    return &clientMethods;
 }
 
-void clientDelete(clientObj_t *client)
+void clientRelease()
 {
     if (client_ctx.connected && (client_ctx.sockFd > 0))
     {
         close(client_ctx.sockFd);
     }
     client_ctx.connected = 0;
-
-    /* Free the memory for the client's methods */
-    if (client != NULL)
-    {
-        free(client);
-    }
 
     return;
 }

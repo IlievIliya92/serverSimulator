@@ -110,9 +110,9 @@ int main(int argc, char *argv[])
     }
 
     /* Create a new client */
-    clientObj_t *client = clientNew(sockPath,
-                                    clientId,
-                                    CONNECTION_TRIES);
+    clientMethods_t *client = clientGet(sockPath,
+                                        clientId,
+                                        CONNECTION_TRIES);
     if (client == NULL)
         return -1;
 
@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
     }
 
 exit:
-    clientDelete(client);
+    clientRelease(client);
     fsmDelete(fsm);
 
     fprintf(stderr, "Clossing client application ...\n");
