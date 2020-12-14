@@ -5,3 +5,4 @@ source ./scripts/addtopathClient
 
 printf "Commands imported:\n\n"
 printf "buildClient - build the client\n"
+printf "buildClientLib - build shared .so for the client lib\n"
