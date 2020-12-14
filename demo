@@ -1,0 +1,138 @@
+#!/usr/bin/python3
+
+# --- Imports --- #
+import os
+import sys
+import time
+import random
+import signal
+import argparse
+import threading
+import subprocess
+
+# --- Constatns --- #
+SOCK_FILE = "./server_simulation.sock"
+SERVER_BIN = "./server/server"
+CLIENT_BIN = "./client/client"
+
+# --- Server Class --- #
+class Demo():
+    def __init__(self,
+                 clients,
+                 simSpeed,
+                 randDelay,
+                 sock_file=SOCK_FILE,
+                 serverBin=SERVER_BIN,
+                 clientBin=CLIENT_BIN):
+        try:
+            self.randDelay = randDelay
+            self.serverSimSpeed = float(simSpeed)
+            if isValidFile(serverBin):
+                self.serverBin = serverBin
+            else:
+                print("Please build the server")
+                sys.exit(0)
+
+            if isValidFile(clientBin):
+                self.clientBin = clientBin
+            else:
+                print("Please build the client")
+                sys.exit(0)
+
+            self.clients = int(clients)
+            if self.clients <= 0 or self.clients > 4:
+                print("Valid connection slots must be positive and up to 4");
+                sys.exit(0)
+        except Exception as e:
+            print(str(e))
+            sys.exit(0)
+
+        self.sock_file = sock_file
+        self.proc = []
+        self.monitors = []
+
+    def stop(self, sig, frame):
+        for proc in self.proc:
+            os.kill(proc.pid, signal.SIGINT)
+
+        try:
+            os.remove(self.sock_file)
+        except Exception as e:
+            print(str(e))
+            pass
+
+        sys.exit(0)
+
+    def start(self):
+        # Prepare the server command line
+        cmdLine = []
+        cmdLine.append(self.serverBin)
+        cmdLine.append("-f")
+        cmdLine.append(self.sock_file)
+        cmdLine.append("-s")
+        cmdLine.append(str(self.clients))
+        cmdLine.append("-t")
+        cmdLine.append(str(self.serverSimSpeed))
+        p = subprocess.Popen(cmdLine, stderr=subprocess.PIPE)
+        self.proc.append(p)
+
+        # Clear the command line
+        cmdLine.clear()
+
+        # Prepare the clients command line
+        clientId = 1
+        cmdLine.append(self.clientBin)
+        cmdLine.append("-f")
+        cmdLine.append(self.sock_file)
+        cmdLine.append("-i")
+        cmdLine.append(str(clientId))
+
+        for client in range(self.clients):
+            if self.randDelay:
+                time.sleep(random.uniform(0.5, 1.5))
+            p = subprocess.Popen(cmdLine, stderr=subprocess.PIPE)
+            self.proc.append(p)
+            # Update client IDs by 1
+            clientId += 1
+            cmdLine[-1:] = str(clientId)
+
+# --- Helper Functions --- #
+def parse_inputArgs():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-d',
+                         action='store_true', default=False,
+                         dest='randDelay',
+                         help='Random delay between client starts')
+
+    requiredArgs = parser.add_argument_group('required arguments')
+    requiredArgs.add_argument('-n',
+                              action='store',
+                              dest='clientsN',
+                              required=True,
+                              help='Number of clients')
+
+    requiredArgs.add_argument('-t',
+                              action='store',
+                              dest='simSpeed',
+                              required=True,
+                              help='Simulation of the time for data aquistion')
+
+    return parser.parse_args()
+
+def isValidFile(file):
+    return os.path.isfile(file)
+
+
+# --- Main --- #
+def main():
+    args = parse_inputArgs()
+
+    demo = Demo(args.clientsN, args.simSpeed, args.randDelay)
+    demo.start()
+
+    signal.signal(signal.SIGINT, demo.stop)
+    signal.pause()
+
+if __name__=='__main__':
+    main()
