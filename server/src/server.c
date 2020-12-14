@@ -32,6 +32,7 @@ typedef struct conn_t {
 typedef struct server_t {
     int connections;
     int conSlots;
+    float simSpeed;
     pthread_t producerId;
 
     /* Connection Slots */
@@ -88,6 +89,8 @@ static void newConnection(int connfd, void *arg)
     server = (server_t *)arg;
 
     pthread_mutex_lock(&server->data_lock);
+
+    /* TODO: change to linked list to reduce time complexity */
     for (i = 0; i < server->conSlots; i++)
     {
         if (server->conns[i]->slotActive == FALSE)
@@ -106,10 +109,13 @@ static void newConnection(int connfd, void *arg)
     return;
 }
 
-static void server_init(server_t *server, int connectionsSlots)
+static void server_init(server_t *server, int connectionsSlots, float simSpeed)
 {
     int i = 0;
+
+    stopConnection = FALSE;
     server->connections = 0;
+    server->simSpeed = simSpeed * MICRO_TO_SECONDS;
     server->conSlots = connectionsSlots;
     server->conns = (conn_t **)malloc(sizeof(conn_t*));
     for (i = 0; i < server->conSlots; i++) {
@@ -140,7 +146,7 @@ static void *producerThread(void *arg)
     while(!stopConnection)
     {
         data++;
-        fprintf(stdout, "\"Unit %d\" produced\n", data);
+        fprintf(stdout, SERVER_TAG"“Unit %d” produced\n", data);
 
         pthread_mutex_lock(&server->data_lock);
         /* If there is somebody listening lets send him the data */
@@ -156,7 +162,8 @@ static void *producerThread(void *arg)
         }
         pthread_mutex_unlock(&server->data_lock);
 
-        sleep(1);
+        /* sleep to simulate some data aquistion */
+        usleep(server->simSpeed);
     }
     server_deinit(server);
 
@@ -169,14 +176,14 @@ static void server_connectionsStop()
 }
 
 /******************************* INTERFACE FUNCTIONS ******************************/
-int server_start(const char *sockFile, int connectionSlots)
+int server_start(const char *sockFile, int connectionSlots, float simSpeed)
 {
     server_t server;
 
-    server_init(&server, connectionSlots);
+    server_init(&server, connectionSlots, simSpeed);
     pthread_create(&server.producerId, NULL, producerThread, &server);
 
-    fprintf(stdout, "Server Es\n");
+    fprintf(stdout, SERVER_TAG"Server Es\n");
     if (sockFile != NULL)
     {
         socket_serverStart(sockFile, newConnection, &server);

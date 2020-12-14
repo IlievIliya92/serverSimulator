@@ -9,12 +9,16 @@
 
 
 /******************************** LOCAL DEFINES *******************************/
+#define DEFAULT_SIM_SPEED   1
+
 typedef struct serverArgs_t
 {
     int verbose;
     int slots;
     const char *sockFile;
+    float simSpeed;
 } serverArgs_t;
+
 
 /******************************* LOCAL TYPEDEFS ******************************/
 
@@ -24,7 +28,8 @@ typedef struct serverArgs_t
 static struct argp_option options[] = {
     {"verbose", 'v', "VERBOSITY_LEVEL", 0, "Verbose level"},
     {"fsock", 'f', "SOCK_FILE", 0, "Socket file for the UNIX socket"},
-    {"slots", 's', "SLOTS", 0, "Server connection slots"},
+    {"simspeed", 't', "SIM_SPEED", 0, "Simulation of the time for data aquistion"},
+    {"slots", 's', "SLOTS", 0, "Server connection slots (max 4)"},
     { 0 }
 };
 
@@ -44,7 +49,9 @@ error_t parse_option( int key, char *arg, struct argp_state *state )
         case 's':
             arguments->slots = atoi(arg);
             break;
-
+        case 't':
+            arguments->simSpeed = atof(arg);
+            break;
         default:
             return ARGP_ERR_UNKNOWN;
     }
@@ -65,7 +72,7 @@ static struct argp argp = {options, parse_option};
 int main(int argc, char *argv[])
 {
     serverArgs_t args = { 0 };
-    int slots = 0;
+    args.simSpeed = DEFAULT_SIM_SPEED;
 
     if( argp_parse(&argp, argc, argv, 0, 0, &args) != 0 )
     {
@@ -77,13 +84,13 @@ int main(int argc, char *argv[])
         log_Setlevel(args.verbose);
     }
 
-    if (args.slots <= 0) {
-        log_err("The connection slots can not be les than 1");
-        return -3;
+    if (args.slots <= 0 || args.slots > 4 ) {
+        log_err("Valid connection slots must be positive and up to 4");
+        return -1;
     }
 
     signal(SIGINT, sig_handler);
-    server_start(args.sockFile, args.slots);
+    server_start(args.sockFile, args.slots, args.simSpeed);
 
     return 0;
 }

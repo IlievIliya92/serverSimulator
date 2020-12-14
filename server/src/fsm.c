@@ -54,10 +54,8 @@ static eventHandler StateMachine = {
 
 static fsmState_t start_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 {
-    fprintf(stdout, "Client %d connected.\n", id);
-
+    fprintf(stdout, SERVER_TAG"Client %d connected.\n", id);
     packet_placeCmd(outMsg, ACK);
-
 
     return Send_State;
 }
@@ -74,7 +72,7 @@ static fsmState_t send_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 
 static fsmState_t ack_handler(int id, msg_t *outMsg, mt_queue_t *dataQueue)
 {
-    fprintf(stdout, "Client %d message receive Ack.\n", id);
+    fprintf(stdout, SERVER_TAG"Client %d message receive Ack.\n", id);
     packet_placeCmd(outMsg, ACK);
 
     return Send_State;
@@ -150,7 +148,7 @@ fsm_t *getFsm(void)
     fsm_t *fsm = (fsm_t *)(malloc(sizeof(fsm_t)));
     fsm->run = fsm_run;
     fsm->state = Idle_State;
-    fsm->q = mt_queueNew(10, sizeof(int));
+    fsm->q = mt_queueNew(1000, sizeof(int));
 
     return fsm;
 }

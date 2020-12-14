@@ -41,6 +41,8 @@ void socket_serverStart(const char *socket_file, socket_new_t cb, void *arg)
 
     mode_t mode = SERVER_SOCK_FILE_MODE;
 
+    stopServer = FALSE;
+
     if ((listenfd = socket(PF_UNIX, SOCK_STREAM, 0)) < 0)
     {
         log_err("Failed to create the server socket!\n");

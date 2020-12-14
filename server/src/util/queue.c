@@ -1,4 +1,4 @@
-
+/******************************** INCLUDE FILES *******************************/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,7 +74,6 @@ int mt_queueSend(mt_queue_t *q, const void * element)
 
     pthread_mutex_unlock(&q->data_lock);
 
-    // And we must give to the data mutex, now that there is one more message
     sem_post(&q->more_data);
 
     return 0;
@@ -102,7 +101,6 @@ int mt_queueReceive(mt_queue_t *q, void * element_out)
         }
         pthread_mutex_unlock(&q->data_lock);
 
-        // And we must give to the room mutex, now that there is room for one more message
         sem_post(&q->more_room);
 
         return 0;
