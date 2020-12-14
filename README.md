@@ -19,11 +19,16 @@ with the command.
     cd [PROJECT_PATH]]
     ./demo -n 4 -t 0.1 -d
 
--n Number of clients to connect to the server.
--t Delay which represents the data aquistion in the server.
--d (optional) Connect the clients one after another with aleatory
+Demo parameters:
+n Number of clients to connect to the server.
+t Delay which represents the data aquistion in the server.
+d (optional) Connect the clients one after another with aleatory
     delay between 0.5 and 1.5 seconds
 
 The expected output should look like the following picture:
-![Demo](https://github.com/IlievIliya92/serverSimulator/blob/master/demo.png)
+
+<p align="center">
+  <img src="https://github.com/IlievIliya92/serverSimulator/blob/master/demo.png" alt="Demo"/>
+</p>
+
 
