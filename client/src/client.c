@@ -65,7 +65,6 @@ static int client_socketInit(const char *socket_path, int retries)
 /***************************** LOCAL FUNCTIONS ****************************/
 static int client_connect(void)
 {
-    fprintf(stdout, "%s\n", client_ctx.sockPath);
     client_ctx.sockFd = client_socketInit(client_ctx.sockPath, client_ctx.connTries);
     if (client_ctx.sockFd < 0 )
     {

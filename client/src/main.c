@@ -126,13 +126,16 @@ int main(int argc, char *argv[])
     {
         goto exit;
     }
+
     signal(SIGINT, sig_handler);
 
     memset(buffTx, 0x0, TX_BUFF_SIZE);
     memset(buffRx, 0x0, RX_BUFF_SIZE);
 
     fsm->init(client->getId());
-    fprintf(stderr, "Client %d started\n", client->getId());
+    fprintf(stdout, CLIENT_TAG(client->getId()));
+    fprintf(stdout, "Client %d started\n", client->getId());
+
     while(!STOP_CLIENT)
     {
         if (fsm->statusRun())

@@ -8,6 +8,10 @@ extern "C" {
 /******************************** INCLUDE FILES *******************************/
 
 /*********************************** DEFINES **********************************/
+/* just used for coloring probably not the best place to define it */
+#define ANSI_COLOR_YELLOW    "\x1b[33m"
+#define COLOR_RESET          "\x1b[0m"
+#define CLIENT_TAG(x)        ANSI_COLOR_YELLOW"CLIENT%d "COLOR_RESET, x
 
 /****************************** GENERIC TYPEDEFS *****************************/
 typedef void (*voidVoid_t)(void);

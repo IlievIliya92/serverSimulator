@@ -160,6 +160,7 @@ static void fsm_run(char *rxBuff, char *txBuff, int *txLen)
 
         if (fsm_ctx.newInMsg->header.command == GET_RESPONSE)
         {
+            fprintf(stdout, CLIENT_TAG(fsm_ctx.clientId));
             fprintf(stdout, " Server Es produced  “%s”\n", fsm_ctx.newInMsg->payload);
         }
         /* move to send buffer */
