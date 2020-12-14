@@ -12,7 +12,7 @@ extern "C" {
 /****************************** GENERIC TYPEDEFS *****************************/
 
 /********************************** METHODS ***********************************/
-typedef struct _clientObj_t {
+typedef struct _clientMethods_t {
     intVoid_t connect;
     constCharPtrSizeT_t send;
     charPtrSizeT_t rcv;
