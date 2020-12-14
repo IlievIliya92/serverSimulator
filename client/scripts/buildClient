@@ -1,10 +1,12 @@
 #!/bin/bash
 
-cd ${CLIENT_PROJECT_ROOT}/src/
-gcc -c -Wall -Werror -fpic client.c
-gcc -shared -o libclient.so client.o
-#LD_LIBRARY_PATH=${}:$LD_LIBRARY_PATH
-gcc -L${LD_LIBRARY_PATH} -Wall -o client main.c fsm.c packet.c -lclient
-cp client ${CLIENT_PROJECT_ROOT}/client
+cd ${CLIENT_PROJECT_ROOT}
+./run_cmake
+cd ${CLIENT_PROJECT_ROOT}/Debug
+make
+
+cd ${CLIENT_PROJECT_ROOT}/Debug
+cp client ${CLIENT_PROJECT_ROOT}
 
 cd - &> /dev/null
+
